@@ -35,8 +35,8 @@ Sistem, **Retrieval-Augmented Generation (RAG)** mimarisini **multimodal (görü
 
 ```bash
 # 1. Repository'yi klonlayın
-git clone https://github.com/talha/dermato-rag.git
-cd dermato-rag
+git clone https://github.com/TalhaD-coder/Dermato-RAG.git
+cd Dermato-RAG
 
 # 2. Sanal ortam oluşturun
 python -m venv venv
@@ -50,10 +50,7 @@ source venv/bin/activate
 # 4. Bağımlılıkları yükleyin
 pip install -r requirements.txt
 
-# 5. Geliştirme araçlarını yükleyin (opsiyonel)
-pip install -e ".[dev]"
-
-# 6. Ortam değişkenlerini ayarlayın
+# 5. Ortam değişkenlerini ayarlayın
 copy .env.example .env
 # .env dosyasını düzenleyip API anahtarlarınızı girin
 ```
@@ -63,6 +60,52 @@ copy .env.example .env
 ```bash
 pytest tests/ -v
 ```
+
+---
+
+## 📦 Veri Seti Kurulumu
+
+Veri setleri boyutları nedeniyle (~14 GB) GitHub'da yer almaz. İki yöntemle kurabilirsiniz:
+
+### Yöntem 1: Paylaşılan Cloud Klasöründen (Takım İçi)
+
+1. Paylaşılan **Google Drive / OneDrive** linkinden `data/` klasörünü indirin
+2. İndirdiğiniz `data/` klasörünü proje kök dizinine koyun
+3. Kontrol edin:
+```bash
+python scripts/setup_data.py --check
+```
+
+### Yöntem 2: Kaynaktan İndirme
+
+| Veri Seti | Boyut | İndirme Linki |
+|-----------|-------|---------------|
+| **ISIC 2019** | ~9.1 GB | [Kaggle](https://www.kaggle.com/datasets/andrewmvd/isic-2019) |
+| **PAD-UFES-20** | ~3.4 GB | [Mendeley](https://data.mendeley.com/datasets/zr7vgbcyr2) |
+| **Fitzpatrick17k** | ~1.1 GB | [Zenodo](https://doi.org/10.5281/ZENODO.11101337) |
+
+İndirdikten sonra:
+```bash
+# Veri setlerini data/raw/ altına koyun (detaylar için):
+python scripts/setup_data.py --download-links
+
+# Verileri işleyin (resize, split, birleştirme):
+python scripts/process_data.py
+
+# Doğrulayın:
+python scripts/validate_data.py
+```
+
+### İşlenmiş Veri Yapısı
+
+İşleme sonrası `data/processed/` dizini:
+- `unified_metadata.csv` — 27,629 görüntü, 9 sınıf, birleşik metadata
+- `train_metadata.csv` — 19,340 eğitim örneği (%70)
+- `val_metadata.csv` — 4,144 doğrulama örneği (%15)
+- `test_metadata.csv` — 4,145 test örneği (%15)
+- `class_weights.csv` — Sınıf dengesizliği ağırlıkları
+- `dataset_stats.json` — İstatistik özeti
+- `images/` — 224×224 JPEG görüntüler
 
 ---
 
@@ -87,7 +130,7 @@ Dermato-RAG/
 │   ├── evaluation/            # Değerlendirme
 │   └── utils/                 # Yardımcı fonksiyonlar
 ├── app/                        # Web arayüzü
-├── tests/                      # Birim testleri
+├── tests/                      # Birim testleri (63 test)
 ├── scripts/                    # Yardımcı scriptler
 ├── notebooks/                  # Jupyter notebook'lar
 └── docs/                       # Dokümantasyon
