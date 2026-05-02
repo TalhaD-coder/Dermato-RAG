@@ -1,0 +1,45 @@
+# ============================================
+# Dermato-RAG Ana Konfigürasyon Dosyası
+# ============================================
+# Bu dosya projenin tüm temel ayarlarını içerir.
+# Ortam değişkenleri ile override edilebilir.
+# ============================================
+
+project:
+  name: "Dermato-RAG"
+  version: "0.1.0"
+  description: "Dermatoloji Multimodal Görüntü Analizi ve Tıbbi Literatür Entegrasyonu ile Tanı Destek Sistemi"
+  seed: 42  # Tekrarlanabilirlik için global seed
+
+# ---- Paths ----
+paths:
+  data_dir: "data"
+  raw_data_dir: "data/raw"
+  processed_data_dir: "data/processed"
+  knowledge_base_dir: "data/knowledge_base"
+  embeddings_dir: "data/embeddings"
+  models_dir: "models"
+  logs_dir: "logs"
+  outputs_dir: "outputs"
+
+# ---- Logging ----
+logging:
+  level: "INFO"                  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "rich"                 # "rich" (renkli konsol) veya "json" (yapılandırılmış)
+  log_to_file: true
+  log_file: "logs/dermato_rag.log"
+  max_file_size_mb: 50
+  backup_count: 5
+
+# ---- Device ----
+device:
+  use_gpu: true
+  gpu_id: 0
+  mixed_precision: true          # fp16 kullanımı
+
+# ---- Experiment Tracking ----
+tracking:
+  enabled: false                 # W&B tracking (aktifleştirmek için true yapın)
+  project_name: "dermato-rag"
+  entity: null                   # W&B kullanıcı/takım adı
+  tags: ["v0.1", "development"]

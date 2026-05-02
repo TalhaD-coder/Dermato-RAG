@@ -1,0 +1,121 @@
+# ============================================
+# Veri Konfigürasyonu
+# ============================================
+# Veri setleri, ön işleme, augmentation ve
+# split ayarları.
+# ============================================
+
+# ---- Veri Setleri ----
+datasets:
+  isic:
+    name: "ISIC Archive"
+    enabled: true
+    url: "https://www.isic-archive.com/"
+    description: "Melanom ve cilt lezyonları"
+    expected_size: 70000
+  
+  dermnet:
+    name: "DermNet"
+    enabled: true
+    url: "https://dermnetnz.org/"
+    description: "Çeşitli dermatolojik durumlar"
+    expected_size: 23000
+  
+  fitzpatrick17k:
+    name: "Fitzpatrick17k"
+    enabled: true
+    url: "https://github.com/mattgroh/fitzpatrick17k"
+    description: "Cilt tonu çeşitliliği ile etiketli"
+    expected_size: 17000
+  
+  ham10000:
+    name: "HAM10000"
+    enabled: true
+    url: "https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DBW86T"
+    description: "7 kategori pigmentli lezyon"
+    expected_size: 10015
+  
+  sd198:
+    name: "SD-198"
+    enabled: false
+    description: "198 cilt hastalığı"
+    expected_size: 6584
+  
+  pad_ufes:
+    name: "PAD-UFES-20"
+    enabled: false
+    url: "https://data.mendeley.com/datasets/zr7vgbcyr2/1"
+    description: "Akıllı telefon görüntüleri"
+    expected_size: 2298
+
+# ---- Veri Ön İşleme ----
+preprocessing:
+  image:
+    resize: [224, 224]          # [height, width]
+    normalize:
+      mean: [0.485, 0.456, 0.406]  # ImageNet normalizasyonu
+      std: [0.229, 0.224, 0.225]
+    color_space: "RGB"
+    remove_artifacts: true       # Saç, cetvel gibi artefaktları temizle
+
+  text:
+    lowercase: false
+    remove_html: true
+    remove_urls: true
+    min_chunk_length: 100        # Minimum chunk karakter sayısı
+    max_chunk_length: 2000       # Maximum chunk karakter sayısı
+
+# ---- Data Augmentation ----
+augmentation:
+  enabled: true
+  train_transforms:
+    - name: "RandomHorizontalFlip"
+      p: 0.5
+    - name: "RandomVerticalFlip"
+      p: 0.5
+    - name: "RandomRotation"
+      degrees: 20
+    - name: "ColorJitter"
+      brightness: 0.2
+      contrast: 0.2
+      saturation: 0.2
+      hue: 0.1
+    - name: "RandomResizedCrop"
+      size: [224, 224]
+      scale: [0.8, 1.0]
+  
+  val_transforms:
+    - name: "Resize"
+      size: [256, 256]
+    - name: "CenterCrop"
+      size: [224, 224]
+
+# ---- Train/Val/Test Split ----
+split:
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+  stratified: true              # Sınıf dengesini koru
+  random_state: 42
+
+# ---- PubMed / Literatür ----
+pubmed:
+  email: "your_email@example.com"   # NCBI Entrez API için gerekli
+  api_key: null                     # Opsiyonel: NCBI API anahtarı
+  max_results_per_query: 500
+  search_queries:
+    - "dermatology diagnosis artificial intelligence"
+    - "skin lesion classification deep learning"
+    - "dermoscopy image analysis"
+    - "melanoma detection machine learning"
+    - "dermatological disease differential diagnosis"
+    - "skin disease image recognition"
+    - "clinical dermatology guidelines"
+  date_range:
+    start: "2018/01/01"
+    end: "2025/12/31"
+  article_types:
+    - "Journal Article"
+    - "Review"
+    - "Systematic Review"
+    - "Clinical Trial"
