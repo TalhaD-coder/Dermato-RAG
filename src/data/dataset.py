@@ -174,50 +174,27 @@ class DermatoDataset(Dataset):
 def get_transforms(
     split: str = "train",
     image_size: int = 224,
+    augmentation_level: str = "medium",
 ) -> Any:
     """
     Split'e göre uygun transform pipeline döndürür.
 
-    Train: Augmentation + normalizasyon
-    Val/Test: Sadece normalizasyon
+    Augmentation modülüne delege eder — tek bir yerde yönetim.
 
     Args:
         split: "train", "val" veya "test".
         image_size: Görüntü boyutu.
+        augmentation_level: "light", "medium" veya "heavy".
 
     Returns:
         torchvision.transforms.Compose instance.
     """
-    try:
-        from torchvision import transforms
-    except ImportError:
-        logger.warning("torchvision yüklü değil, transform döndürülemiyor")
-        return None
-
-    # ImageNet normalizasyon değerleri
-    normalize = transforms.Normalize(
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.225],
-    )
+    from src.data.augmentation import get_train_transforms, get_eval_transforms
 
     if split == "train":
-        return transforms.Compose([
-            transforms.RandomResizedCrop(image_size, scale=(0.8, 1.0)),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomVerticalFlip(p=0.5),
-            transforms.RandomRotation(degrees=20),
-            transforms.ColorJitter(
-                brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1
-            ),
-            transforms.ToTensor(),
-            normalize,
-        ])
+        return get_train_transforms(image_size=image_size, level=augmentation_level)
     else:
-        return transforms.Compose([
-            transforms.Resize((image_size, image_size)),
-            transforms.ToTensor(),
-            normalize,
-        ])
+        return get_eval_transforms(image_size=image_size)
 
 
 def get_dataloaders(
