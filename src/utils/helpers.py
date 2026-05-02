@@ -135,7 +135,7 @@ def timer(description: str = "İşlem") -> Generator[None, None, None]:
         # Çıktı: "Model yükleme tamamlandı: 3.45 saniye"
     """
     start_time = time.perf_counter()
-    logger.info(f"⏳ {description} başladı...")
+    logger.info(f"[START] {description} basladi...")
     try:
         yield
     finally:
@@ -150,7 +150,7 @@ def timer(description: str = "İşlem") -> Generator[None, None, None]:
             hours = int(elapsed // 3600)
             minutes = int((elapsed % 3600) // 60)
             time_str = f"{hours} saat {minutes} dakika"
-        logger.info(f"✅ {description} tamamlandı: {time_str}")
+        logger.info(f"[DONE] {description} tamamlandi: {time_str}")
 
 
 def format_size(size_bytes: int) -> str:
