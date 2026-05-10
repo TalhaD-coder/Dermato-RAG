@@ -35,31 +35,31 @@ Projenin altyapısı ve görüntü veri seti işleme kısımları %100 oranında
 
 ---
 
-## 🚀 BUNDAN SONRA YAPILACAKLAR (Faz 2b ve Sonrası)
+## 🚀 BUNDAN SONRA YAPILACAKLAR (Faz 4 ve Sonrası)
 
-Sıradaki hedef, uygulamanın **RAG (Retrieval-Augmented Generation)** kısmına, yani "Tıbbi Literatür" bacağı olan **Faz 3'e** geçiş yapmaktır. Ancak ondan hemen önce eksik kalan küçük bir veri çekme adımı vardır.
+Veri işleme ve **RAG (Tıbbi Literatür) Bilgi Tabanı** kısımları (Faz 3 dahil) eksiksiz tamamlanmıştır.
 
-### 🟡 Acil Sıradaki Görev: Faz 2b (PubMed Makalelerinin Çekilmesi)
-Görüntü verilerini hallettik ancak bilgi tabanı (Knowledge Base) için tıbbi makale metinleri henüz toplanmadı.
-1. **Hedef:** PubMed/Entrez API kullanılarak dermatoloji alanındaki referans makalelerin indirilmesi.
-2. **Gereksinim:** NCBI hesabı açılarak bir API Anahtarı alınması ve `.env` dosyasına eklenmesi gerekiyor.
-3. **Çıktı:** İndirilen makalelerin `data/knowledge_base/raw_docs` klasörüne kaydedilmesi.
+### ✅ Tamamlanan Faz 3 (RAG Pipeline) Özeti
+- PubMed/Entrez API üzerinden 10 farklı dermatoloji kategorisinde **705 akademik makale** indirildi (`data/knowledge_base/raw_docs`).
+- Makaleler abstract ve tam metin olarak anlamsal parçalara (chunk) bölündü.
+- **PubMedBERT** modeli kullanılarak metin embedding'leri oluşturuldu ve **ChromaDB** vektör veritabanına indekslendi.
+- Hibrit Arama (Dense + BM25) ve Cross-encoder tabanlı re-ranking mekanizmaları (`src/rag/retriever.py`, `src/rag/reranker.py`) kodlandı.
+- Tüm bu ağır işlemlerin Google Colab üzerinde ücretsiz T4 GPU ile saniyeler içinde yapılabilmesi için `notebooks/02_build_kb_colab.ipynb` hazırlandı.
 
-### 🔵 Faz 3: RAG Pipeline Kurulumu
-1. **Chunking (`src/rag/chunking.py`):** PubMed'den çekilen makalelerin anlamsal (semantic) olarak mantıklı paragraflara / parçalara bölünmesi.
-2. **Embedding (`src/rag/embedding.py`):** Metinlerin vektör uzayına çıkarılması. Metin için `PubMedBERT`, ilerideki multimodalite için `BiomedCLIP` modellerinin denenmesi.
-3. **Vector Database:** `ChromaDB` veya `FAISS` kurularak embeddinglerin kaydedilmesi.
-4. **Retriever ve Re-ranker:** Sorguya göre en iyi kanıtların getirilmesi ve Cross-Encoder ile yeniden sıralanması.
+---
 
-### 🟣 Faz 4: Vision Model (Görüntü İşleme Bacağı)
-- Hazırlanan PyTorch veri setlerinin kullanılarak bir Vision Encoder (ViT-B/16 veya BiomedCLIP) modelinin fine-tune (hassas ayar) edilmesi.
+### 🟣 Acil Sıradaki Görev: Faz 4 (Vision Model - Görüntü İşleme Bacağı)
+Arkadaşınızın ve ona eşlik edecek AI'ın görevi buradan başlıyor!
+1. **Hedef:** Hazırlanan PyTorch veri setlerini (ISIC+PAD-UFES) kullanarak bir Vision Encoder modelini fine-tune (hassas ayar) etmek.
+2. **Kullanılacak Model:** Akademik doğruluk için **BiomedCLIP** (veya muadili tıbbi ViT-B/16).
+3. **Beklenen Çıktı:** Görüntüleri alıp tıbbi/anlamsal vektörlere çeviren ve `src/models/vision_encoder.py` içinde çalışan bir modül.
 
 ### 🟢 Faz 5: LLM Entegrasyonu (Sentez)
-- GPT-4o, Claude veya Gemini kullanılarak; Vision Model'den gelen "Görüntü özellikleri" ile RAG'dan gelen "Tıbbi Literatürün" birleştirilip doktora "Karar Destek Çıktısı" sunacak Prompt Pipeline'ının yazılması.
+- GPT-4o, Claude veya Gemini kullanılarak; Vision Model'den gelen "Görüntü özellikleri" ile ChromaDB'den (RAG) gelen "Tıbbi Literatürün" birleştirilip doktora "Karar Destek Çıktısı" sunacak Prompt Pipeline'ının yazılması.
 
 ### 🔴 Faz 6 & 7: Değerlendirme (Evaluation) ve Arayüz
 - `ragas` kütüphanesi ve scikit-learn ile Doğruluk (Accuracy), NDCG gibi akademik metriklerin ölçülmesi.
-- Gradio veya Streamlit kullanılarak demo arayüzü tasarlanması.
+- Gradio veya Streamlit kullanılarak klinik kullanıma uygun demo arayüzü tasarlanması.
 
 ---
 
@@ -68,6 +68,6 @@ Eğer bu dosyayı okuyan bir AI isen, lütfen şu kurallara dikkat et:
 1. Projenin genel mimarisine hakim olmak için her zaman kök dizindeki `README.md` ve bu belgeyi temel al.
 2. Yazdığın her kod, `src/` altındaki dizin hiyerarşisine uymalı ve mutlaka açıklayıcı docstring'ler içermelidir.
 3. `tests/` klasörü altına yazdığın her modül için unit testleri yazmayı unutma ve `pytest` ile testleri geçirdiğinden emin ol.
-4. Sıradaki görevi yaparken (örn: PubMed makale indirme), işlemi tamamladıktan sonra GitHub'a (`git add`, `git commit`, `git push`) basmayı unutma.
-5. Kullanıcıyla daima adım adım iletişim kurarak (örn: "Önce script'i yazıyorum, sonra API ile deneme yapacağım") onay al.
-6. İşine **Faz 2b (PubMed Makale Çekme Scripti `scripts/build_knowledge_base.py`)** yazarak başla! Kolay gelsin!
+4. Sıradaki görevi yaparken işlemi tamamladıktan sonra GitHub'a (`git add`, `git commit`, `git push`) basmayı unutma.
+5. Kullanıcıyla daima adım adım iletişim kurarak ilerle.
+6. İşine **Faz 4 (Vision Model) kodlarını** `src/models/` klasöründe tasarlayarak başla. Colab kullanılması gerektiğini kullanıcıya hatırlat. Kolay gelsin!
