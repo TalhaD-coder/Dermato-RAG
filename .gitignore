@@ -44,13 +44,12 @@ data/knowledge_base/raw_docs/
 *.feather
 
 # ---- Model Weights ----
-models/
+/models/
 *.pt
 *.pth
 *.ckpt
 *.bin
 *.safetensors
-!src/**/*.py
 
 # ---- Logs ----
 logs/
