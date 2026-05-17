@@ -129,12 +129,12 @@ class DermatoRAGPipeline:
         try:
             import chromadb
 
-            db_path = str(PROJECT_ROOT / "data" / "embeddings" / "chroma_db")
+            db_path = str(PROJECT_ROOT / "data" / "embeddings" / "chromadb")
             logger.info(f"ChromaDB yükleniyor: {db_path}")
 
             self.chroma_client = chromadb.PersistentClient(path=db_path)
             self.collection = self.chroma_client.get_or_create_collection(
-                name="dermato_rag",
+                name="dermato_kb",
                 metadata={"hnsw:space": "cosine"},
             )
             doc_count = self.collection.count()
