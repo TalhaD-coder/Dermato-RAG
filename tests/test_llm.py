@@ -49,6 +49,7 @@ class TestPromptTemplates:
             vision_prediction="Melanoma %82",
             vision_features="BiomedCLIP, 9 sınıf",
             rag_context="[Kaynak 1]: Test makalesi",
+            language="Türkçe",
         )
         assert "45 yaş erkek hasta" in filled
         assert "Melanoma %82" in filled
@@ -87,10 +88,12 @@ class TestDiagnosticGenerator:
             from src.llm.generator import DiagnosticGenerator
             gen = DiagnosticGenerator(provider="gemini", model_name="gemini-1.5-pro")
 
+            # Generator pipeline-format article'ları bekler (snippet/title/journal direkt root'ta)
             rag_results = [
                 {
-                    "text": "Melanoma tanısı için ABCDE kriterleri kullanılır.",
-                    "metadata": {"title": "Melanoma Review", "source": "JAAD 2023"},
+                    "title": "Melanoma Review",
+                    "journal": "JAAD 2023",
+                    "snippet": "Melanoma tanısı için ABCDE kriterleri kullanılır.",
                 }
             ]
             result = gen._format_rag_context(rag_results)
@@ -141,7 +144,8 @@ class TestDiagnosticGenerator:
                 rag_results=[],
             )
 
-            assert "HATA" in result or "hata" in result.lower()
+            # Generator artık LLM_ERROR:* sentinel'leri döndürüyor (frontend kullanıcıya çevriliyor)
+            assert result.startswith("LLM_ERROR:")
 
     def test_unsupported_provider_raises(self):
         """Desteklenmeyen LLM sağlayıcısı hata fırlatıyor mu?"""

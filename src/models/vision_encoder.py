@@ -40,17 +40,21 @@ BIOMEDCLIP_MODEL_NAME = "microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_22
 EMBEDDING_DIM = 512
 DEFAULT_NUM_CLASSES = 9  # ISIC + PAD-UFES birleşik sınıf sayısı
 
-# Sınıf isimleri (preprocessing.py ile uyumlu)
+# Sınıf isimleri — preprocessing.py'de label_id'ye göre sıralı.
+# Runtime'da pipeline.CLASS_LABELS bu sırayı kullanır:
+#   0 actinic_keratosis, 1 basal_cell_carcinoma, 2 benign_keratosis,
+#   3 dermatofibroma,    4 melanoma,             5 nevus,
+#   6 seborrheic_keratosis, 7 squamous_cell_carcinoma, 8 vascular_lesion
 CLASS_NAMES = [
-    "akiec",   # Actinic Keratosis / Bowen's
-    "bcc",     # Basal Cell Carcinoma
-    "bkl",     # Benign Keratosis
-    "df",      # Dermatofibroma
-    "mel",     # Melanoma
-    "nv",      # Melanocytic Nevus
-    "vasc",    # Vascular Lesion
-    "scc",     # Squamous Cell Carcinoma (PAD-UFES)
-    "ack",     # Actinic Keratosis (PAD-UFES)
+    "actinic_keratosis",
+    "basal_cell_carcinoma",
+    "benign_keratosis",
+    "dermatofibroma",
+    "melanoma",
+    "nevus",
+    "seborrheic_keratosis",
+    "squamous_cell_carcinoma",
+    "vascular_lesion",
 ]
 
 

@@ -54,11 +54,20 @@ rich>=13.0.0
 tqdm>=4.65.0
 typer>=0.9.0
 
-# ---- Evaluation ----
+# ---- Evaluation & Visualization (Faz 7) ----
 ragas>=0.1.0
+matplotlib>=3.7.0
+
+# ---- Documentation / Screenshot Capture (opsiyonel) ----
+playwright>=1.45.0   # docs/images/ üretmek için: scripts/capture_screenshots.py
 
 # ---- Experiment Tracking ----
 wandb>=0.16.0
+
+# ---- Web Interface (Faz 6) ----
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
 
 # ---- Dev Dependencies ----
 pytest>=7.4.0
@@ -67,6 +76,6 @@ black>=23.0.0
 ruff>=0.1.0
 ipykernel>=6.25.0
 
-# ---- Web Interface ----
+# ---- Alternatif UI prototip kütüphaneleri (opsiyonel) ----
 streamlit>=1.28.0
 gradio>=4.0.0

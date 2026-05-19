@@ -87,6 +87,12 @@ SEARCH_QUERIES = {
         "AND (diagnosis OR dermoscopy) "
         "AND english[la] AND hasabstract[text]"
     ),
+    # Seboreik keratoz (Faz 6.5 — pipeline sınıfıyla bire bir eşleşmesi için ayrı kategori)
+    "seborrheic_keratosis": (
+        "(seborrheic keratosis[MeSH] OR seborrhoeic keratosis OR seborrheic keratoses) "
+        "AND (dermoscopy OR dermatoscopy OR diagnosis OR clinical features OR pathology) "
+        "AND english[la] AND hasabstract[text]"
+    ),
     # Vaskuler lezyon
     "vascular_lesion": (
         "(hemangioma[MeSH] OR vascular skin lesion OR angioma) "

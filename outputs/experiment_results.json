@@ -1,0 +1,29 @@
+{
+  "config": {
+    "vision_max": 270,
+    "rag_n": 1,
+    "do_llm": true,
+    "selected": [
+      "rag_vs_norag"
+    ]
+  },
+  "timestamp": "2026-05-18 23:39:04",
+  "rag_vs_norag": {
+    "rag": {
+      "n_articles": 5.0,
+      "diversity": 1.0,
+      "category_purity": 0.711111111111111,
+      "faithfulness": 0.02575400024668426,
+      "citation_count": 2.3333333333333335
+    },
+    "norag": {
+      "n_articles": 0.0,
+      "diversity": 0.0,
+      "category_purity": 0.0,
+      "faithfulness": 0.0,
+      "citation_count": 0.0
+    },
+    "n_cases": 9
+  },
+  "elapsed_sec": 666.6065344810486
+}

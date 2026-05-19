@@ -81,6 +81,15 @@ htmlcov/
 .pytest_cache/
 .mypy_cache/
 
+# ---- Geçici çalışma dosyaları (debug / smoke test) ----
+uvicorn_*.txt
+uvicorn_*.log
+result_*.json
+_dict_check.js
+sample_picks.json
+rt.json
+_r.json
+
 # ---- Distribution ----
 *.tar.gz
 *.zip

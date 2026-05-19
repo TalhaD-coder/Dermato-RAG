@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DermatoRAG — YZ Dermatolojik Tanı Destek Sistemi</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <link rel="stylesheet" href="/static/index.css">
+</head>
+<body>
+
+<!-- ======================================================
+     GLOBAL OVERLAYS
+====================================================== -->
+
+<!-- Modal -->
+<div id="app-modal" class="modal-overlay hidden" onclick="handleModalBackdrop(event)">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span id="modal-icon" class="modal-icon">ℹ️</span>
+      <h3 id="modal-title">Bilgi</h3>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions">
+      <button class="btn-primary" onclick="closeModal()">Tamam</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- Image Zoom Modal -->
+<div id="zoom-modal" class="zoom-modal hidden" onclick="closeImageZoom()">
+  <button class="zoom-close" onclick="closeImageZoom()">×</button>
+  <img id="zoom-img" src="" alt="Zoom">
+</div>
+
+<!-- Onboarding Tour -->
+<div id="onboarding-overlay" class="onboarding-overlay hidden">
+  <div class="tour-card">
+    <div class="tour-progress-bar"><div id="tour-progress" class="tour-progress-fill" style="width:25%"></div></div>
+    <div class="tour-header">
+      <span class="tour-step-badge" id="tour-num">1 / 4</span>
+    </div>
+    <div class="tour-icon-big">🔬</div>
+    <h3 id="tour-title">DermatoRAG'a Hoş Geldiniz</h3>
+    <p id="tour-body">Bu sistem, dermatolojik lezyonları yapay zeka ile analiz eder ve olası tanılar sunar.</p>
+    <div class="tour-actions">
+      <button class="btn-secondary" onclick="endOnboarding()" data-i18n="tour_skip">Geç</button>
+      <button class="btn-primary" onclick="tourNext()" id="tour-next-btn" data-i18n="tour_next">İleri →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Keyboard Shortcuts Panel -->
+<div id="shortcuts-panel" class="shortcuts-panel hidden">
+  <div class="shortcuts-header">
+    <h4 data-i18n="shortcuts_title">Klavye Kısayolları</h4>
+    <button class="shortcuts-close" onclick="toggleShortcuts()">×</button>
+  </div>
+  <div class="shortcuts-list">
+    <div class="shortcut-item"><kbd>Enter</kbd><span data-i18n="sh_continue">Görüntü seçiliyken devam et</span></div>
+    <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>Enter</kbd><span data-i18n="sh_analyze">Analizi başlat</span></div>
+    <div class="shortcut-item"><kbd>Esc</kbd><span data-i18n="sh_close">Modal / paneli kapat</span></div>
+    <div class="shortcut-item"><kbd>?</kbd><span data-i18n="sh_shortcuts">Bu paneli aç/kapat</span></div>
+  </div>
+</div>
+
+<!-- ======================================================
+     LANDING VIEW
+====================================================== -->
+<div id="landing-view" class="view active">
+  <nav class="landing-nav">
+    <div class="brand">
+      <div class="logo-orb"></div>
+      <span class="brand-text">DermatoRAG</span>
+    </div>
+    <div class="nav-right">
+      <div class="lang-selector">
+        <button class="lang-btn" data-lang="en" onclick="setLanguage('en')">EN</button>
+        <button class="lang-btn active" data-lang="tr" onclick="setLanguage('tr')">TR</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="hero">
+    <div class="hero-content">
+      <div class="badge" data-i18n="hero_badge">Klinik Seviye Yapay Zeka</div>
+      <h1 data-i18n="hero_title">Yeni Nesil Dermatolojik Teşhis Asistanı</h1>
+      <p data-i18n="hero_desc">Dermatologları ve hastaları en son teknoloji görüntü işleme modelleri ve gerçek zamanlı PubMed literatür sentezi ile güçlendiriyoruz.</p>
+
+      <!-- System info pills -->
+      <div class="hero-pills">
+        <span class="hero-pill">🧠 BiomedCLIP · %73 Top-1 / ~%87 Top-3</span>
+        <span class="hero-pill">📚 706 PubMed Makalesi</span>
+        <span class="hero-pill">⚡ Gemini 2.5 Flash</span>
+      </div>
+
+      <div class="hero-cta-row">
+        <button class="btn-glow-large" onclick="launchApp()">
+          <span data-i18n="hero_btn">Sistemi Başlat →</span>
+        </button>
+        <button class="btn-tour" onclick="startOnboarding(true)">
+          <span data-i18n="hero_tour">Öğretici →</span>
+        </button>
+      </div>
+
+      <!-- Disclaimer on landing -->
+      <div class="hero-disclaimer">
+        ⚠️ <span data-i18n="set_about_note">Bu sistem yalnızca tanı desteği amacıyla kullanılmalıdır. Yapay zeka çıktısı, yetkili bir dermatoloji uzmanının klinik muayenesinin yerini tutamaz.</span>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="glass-card float-1">
+        <span class="icon">🔬</span>
+        <div class="text">
+          <h4 data-i18n="feat1_title">Görüntü İşleme AI</h4>
+          <p data-i18n="feat1_desc">9 Sınıflı Multi-model</p>
+        </div>
+      </div>
+      <div class="glass-card float-2">
+        <span class="icon">📚</span>
+        <div class="text">
+          <h4 data-i18n="feat2_title">RAG Motoru</h4>
+          <p data-i18n="feat2_desc">PubMed Entegrasyonu</p>
+        </div>
+      </div>
+      <div class="glass-card float-3">
+        <span class="icon">📊</span>
+        <div class="text">
+          <h4 data-i18n="feat3_title">Ayırıcı Tanı</h4>
+          <p data-i18n="feat3_desc">9 Sınıf · Güven Skoru</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ======================================================
+     APP VIEW
+====================================================== -->
+<div id="app-view" class="view hidden">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand sidebar-brand" onclick="goToLanding()" title="Ana Sayfaya Dön">
+      <div class="logo-orb"></div>
+      <span class="brand-text">DermatoRAG</span>
+    </div>
+
+    <div class="sidebar-menu">
+      <div class="menu-item active" id="nav-analysis" onclick="newAnalysis()">
+        <span class="icon">📊</span>
+        <span data-i18n="menu_analysis">Yeni Analiz</span>
+      </div>
+      <div class="menu-item" id="nav-history" onclick="showView('history')">
+        <span class="icon">🕒</span>
+        <span data-i18n="menu_history">Hasta Geçmişi</span>
+        <span class="history-badge" id="history-badge" style="display:none">0</span>
+      </div>
+      <div class="menu-item" id="nav-settings" onclick="showView('settings')">
+        <span class="icon">⚙️</span>
+        <span data-i18n="menu_settings">Ayarlar</span>
+      </div>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="health-indicator">
+        <div class="dot pulse"></div>
+        <span data-i18n="status_online">Sistem Aktif</span>
+      </div>
+      <div class="sidebar-controls">
+        <button class="icon-tool-btn" id="theme-toggle" onclick="toggleTheme()" title="Tema Değiştir">☀️</button>
+        <button class="icon-tool-btn" onclick="toggleShortcuts()" title="Klavye Kısayolları">⌨️</button>
+        <button class="icon-tool-btn" onclick="startOnboarding(true)" title="Yardım Turu">❓</button>
+      </div>
+      <div class="lang-selector sidebar-lang">
+        <button class="lang-btn" data-lang="en" onclick="setLanguage('en')">EN</button>
+        <button class="lang-btn active" data-lang="tr" onclick="setLanguage('tr')">TR</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Mobile Sidebar Backdrop -->
+  <div id="sidebar-backdrop" class="sidebar-backdrop hidden" onclick="closeSidebar()"></div>
+
+  <!-- Main Content -->
+  <main class="app-main">
+    <!-- Mobile Top Bar -->
+    <div class="mobile-topbar">
+      <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+      <span class="mobile-brand">DermatoRAG</span>
+      <button class="icon-tool-btn" id="mobile-theme-toggle" onclick="toggleTheme()">☀️</button>
+    </div>
+
+    <!-- ====== ANALİZ GÖRÜNÜMÜ ====== -->
+    <div id="view-analysis">
+
+      <header class="app-header">
+        <div class="wizard-tracker">
+          <div class="track-step active" id="track-1">
+            <div class="step-num">1</div>
+            <span data-i18n="step_1">Görüntü Yükle</span>
+          </div>
+          <div class="track-line"></div>
+          <div class="track-step" id="track-2">
+            <div class="step-num">2</div>
+            <span data-i18n="step_2">Hasta Bilgisi</span>
+          </div>
+          <div class="track-line"></div>
+          <div class="track-step" id="track-3">
+            <div class="step-num">3</div>
+            <span data-i18n="step_3">YZ Raporu</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="wizard-container">
+
+        <!-- ADIM 1: GÖRÜNTÜ YÜKLE -->
+        <section id="step-1" class="wizard-step panel-enter">
+          <div class="step-header">
+            <h2 data-i18n="upload_head">Lezyon Görüntüsü Yükle</h2>
+            <p data-i18n="upload_subhead">Net, iyi aydınlatılmış bir dermoskopik veya klinik lezyon görüntüsü sağlayın.</p>
+          </div>
+
+          <div class="upload-box" id="drop-zone">
+            <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" hidden>
+            <div id="drop-content" class="upload-content">
+              <div class="upload-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </div>
+              <h3 data-i18n="upload_drag">Görüntüyü Sürükleyip Bırakın</h3>
+              <p data-i18n="upload_browse">veya bilgisayardan seçin</p>
+            </div>
+            <img id="preview-img" class="hidden" alt="Yüklenen Lezyon">
+          </div>
+          <!-- Remove image button — visible only after file is selected -->
+          <button id="remove-img-btn" class="btn-remove-img hidden" onclick="removeFile(); event.stopPropagation();">
+            <span>🗑️</span> <span data-i18n="remove_image">Fotoğrafı Kaldır</span>
+          </button>
+
+          <div class="samples-wrapper">
+            <span data-i18n="sample_text">Veya hazır klinik örneklerle test edin:</span>
+            <div class="samples-list">
+              <button class="sample-pill" onclick="loadSample('melanoma')"><span class="c-red"></span> Melanom</button>
+              <button class="sample-pill" onclick="loadSample('nevus')"><span class="c-green"></span> Nevus (Ben)</button>
+              <button class="sample-pill" onclick="loadSample('bcc')"><span class="c-orange"></span> BHK</button>
+            </div>
+          </div>
+
+          <!-- 9 Desteklenen Sınıf -->
+          <div class="supported-classes-info">
+            <span class="sc-label" data-i18n="sc_label">Desteklenen 9 Sınıf:</span>
+            <div id="supported-chips" class="sc-chips"></div>
+          </div>
+
+          <!-- Desteklenmeyen durumlar uyarısı -->
+          <div class="unsupported-notice">
+            <span class="unsupported-icon">ℹ️</span>
+            <span><strong data-i18n="unsupported_head">Desteklenmeyen Durumlar:</strong> <span data-i18n="unsupported_body">Sivilce, egzama, mantar enfeksiyonu, sedef hastalığı gibi deri sorunları bu sistem tarafından desteklenmemektedir. Yalnızca yukarıdaki 9 dermatolojik lezyon sınıfı analiz edilebilir.</span></span>
+          </div>
+
+          <div class="step-actions right">
+            <button class="btn-primary" onclick="goToStep(2)">
+              <span data-i18n="btn_continue">Devam Et →</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- ADIM 2: KLİNİK BAĞLAM -->
+        <section id="step-2" class="wizard-step hidden">
+          <div class="step-header">
+            <h2 data-i18n="ctx_head">Hasta Bilgisi ve Klinik Bağlam</h2>
+            <p data-i18n="ctx_subhead">Daha doğru tanı için hasta bilgilerini ve lezyon özelliklerini girin.</p>
+          </div>
+
+          <!-- Info notice — why to fill in data -->
+          <div class="step2-info-notice">
+            <div class="notice-icon">💡</div>
+            <div>
+              <strong data-i18n="step2_notice_head">Neden bilgi girmeliyim?</strong>
+              <p data-i18n="step2_notice_body">Hastanın yaşı, cinsiyeti ve lezyonun anatomik konumu; YZ sisteminin ilgili tıbbi literatürü daha doğru aramasını ve daha isabetli tanı üretmesini sağlar. Girdiğiniz bilgiler yalnızca tarayıcınızda saklanır, sunucuya kaydedilmez.</p>
+            </div>
+          </div>
+
+          <div class="form-topbar">
+            <button class="btn-ghost-sm" onclick="loadLastPatient()" title="Son hasta bilgilerini yükle">
+              <span>⚡</span> <span data-i18n="quick_fill_btn">Son Hastayı Yükle</span>
+            </button>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label data-i18n="lbl_age">Hasta Yaşı</label>
+              <input type="number" id="inp-age" data-i18n-placeholder="ph_age" placeholder="örn. 45" min="0" max="120">
+            </div>
+            <div class="form-group">
+              <label data-i18n="lbl_gender">Cinsiyet</label>
+              <div class="custom-select">
+                <select id="inp-gender">
+                  <option value="" data-i18n="opt_select">Seçiniz...</option>
+                  <option value="Kadın" data-i18n="opt_f">Kadın</option>
+                  <option value="Erkek" data-i18n="opt_m">Erkek</option>
+                  <option value="Diğer" data-i18n="opt_o">Diğer</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group full-width">
+              <label data-i18n="lbl_location">Anatomik Bölge</label>
+              <input type="text" id="inp-loc" data-i18n-placeholder="ph_loc" placeholder="örn. Sırt üst kısmı, sol ön kol">
+            </div>
+            <div class="form-group full-width">
+              <label data-i18n="lbl_duration">Lezyonun Süresi ve Değişimi</label>
+              <input type="text" id="inp-dur" data-i18n-placeholder="ph_dur" placeholder="örn. 3 aydır yavaşça büyüyor">
+            </div>
+            <div class="form-group">
+              <label data-i18n="lbl_skintype">Cilt Tipi (Fitzpatrick)</label>
+              <div class="custom-select">
+                <select id="inp-skintype">
+                  <option value="" data-i18n="opt_select">Seçiniz...</option>
+                  <option value="Tip I" data-i18n="opt_skin1">Tip I — Çok açık, her zaman yanar</option>
+                  <option value="Tip II" data-i18n="opt_skin2">Tip II — Açık, genellikle yanar</option>
+                  <option value="Tip III" data-i18n="opt_skin3">Tip III — Orta, bazen yanar</option>
+                  <option value="Tip IV" data-i18n="opt_skin4">Tip IV — Esmer, nadiren yanar</option>
+                  <option value="Tip V" data-i18n="opt_skin5">Tip V — Koyu esmer, çok nadir yanar</option>
+                  <option value="Tip VI" data-i18n="opt_skin6">Tip VI — Çok koyu, neredeyse hiç yanmaz</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group full-width">
+              <label data-i18n="lbl_symp">Klinik Notlar ve Belirtiler</label>
+              <textarea id="inp-symp" rows="2" data-i18n-placeholder="ph_symp" placeholder="örn. Kaşıntı var, kenarları düzensiz, ara sıra kanama"></textarea>
+            </div>
+            <div class="form-group">
+              <label data-i18n="lbl_allergy">Bilinen Alerjiler</label>
+              <input type="text" id="inp-allergy" data-i18n-placeholder="ph_allergy" placeholder="örn. Penisilin, lateks, nikel">
+            </div>
+            <div class="form-group">
+              <label data-i18n="lbl_meds">Kullanılan İlaçlar</label>
+              <input type="text" id="inp-meds" data-i18n-placeholder="ph_meds" placeholder="örn. Bağışıklık baskılayıcı, kortizon">
+            </div>
+            <div class="form-group full-width">
+              <label data-i18n="lbl_famhist">Aile Öyküsü</label>
+              <div class="custom-select">
+                <select id="inp-famhist">
+                  <option value="" data-i18n="opt_select">Seçiniz...</option>
+                  <option value="none" data-i18n="opt_famhist_0">Yok / Bilinmiyor</option>
+                  <option value="Ailede melanom geçmişi var" data-i18n="opt_famhist_1">Ailede melanom geçmişi var</option>
+                  <option value="Ailede bazal hücreli karsinom (BHK) geçmişi var" data-i18n="opt_famhist_2">Ailede bazal hücreli karsinom (BHK) geçmişi var</option>
+                  <option value="Ailede skuamöz hücreli karsinom geçmişi var" data-i18n="opt_famhist_3">Ailede skuamöz hücreli karsinom geçmişi var</option>
+                  <option value="Ailede birden fazla cilt kanseri vakası var" data-i18n="opt_famhist_4">Ailede birden fazla cilt kanseri vakası var</option>
+                  <option value="Ailede psoriasis (sedef hastalığı) var" data-i18n="opt_famhist_5">Ailede psoriasis (sedef hastalığı) var</option>
+                  <option value="Ailede atopik dermatit (egzama) var" data-i18n="opt_famhist_6">Ailede atopik dermatit (egzama) var</option>
+                  <option value="Ailede genetik cilt hastalığı var" data-i18n="opt_famhist_7">Ailede genetik cilt hastalığı var</option>
+                  <option value="Ailede bağışıklık sistemi hastalığı var" data-i18n="opt_famhist_8">Ailede bağışıklık sistemi hastalığı var</option>
+                  <option value="Ailede diğer cilt kanseri geçmişi var" data-i18n="opt_famhist_9">Ailede diğer cilt kanseri geçmişi var</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="step-actions split">
+            <button class="btn-secondary" onclick="goToStep(1)">
+              <span data-i18n="btn_back">← Geri</span>
+            </button>
+            <button class="btn-primary analyze-btn" onclick="startAnalysis()">
+              <span class="icon">⚡</span>
+              <span data-i18n="btn_analyze">Yapay Zeka Analizini Başlat</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- ADIM 3: SONUÇLAR & YÜKLEME -->
+        <section id="step-3" class="wizard-step hidden">
+
+          <!-- Yükleme -->
+          <div id="loader-view" class="loader-view">
+            <div class="hexa-spinner"></div>
+            <h2 data-i18n="load_title">Analiz Yapılıyor...</h2>
+            <div class="loading-timer-row">
+              <span data-i18n="load_elapsed">Geçen süre:</span>
+              <span id="loading-timer" class="loading-timer-val">0s</span>
+              <span class="load-est" data-i18n="load_est">· tahmini ~20s</span>
+            </div>
+            <div class="load-tasks">
+              <div class="task" id="t-vision"><span class="t-icon">⏳</span> <span data-i18n="t_vision">Görüntü Modeli Analizi</span></div>
+              <div class="task" id="t-rag"><span class="t-icon">⏳</span> <span data-i18n="t_rag">PubMed Literatür Taraması</span></div>
+              <div class="task" id="t-llm"><span class="t-icon">⏳</span> <span data-i18n="t_llm">Gemini Tanı Motoru</span></div>
+            </div>
+          </div>
+
+          <!-- Sonuçlar -->
+          <div id="results-view" class="results-view hidden">
+
+            <!-- Alerts -->
+            <div class="alert low-conf-alert hidden" id="low-conf-alert">
+              <div class="alert-icon">🟡</div>
+              <div class="alert-text">
+                <strong data-i18n="low_conf_strong">Düşük Güven Uyarısı:</strong>
+                <span data-i18n="low_conf_msg"> Model bu görüntüden emin değil (%45–65 arası güven skoru). Sonuçlar yalnızca referans niteliğindedir; klinik değerlendirme yapılması önerilir.</span>
+              </div>
+            </div>
+
+            <div class="alert ood-alert hidden" id="ood-alert">
+              <div class="alert-icon">🔴</div>
+              <div class="alert-text">
+                <strong data-i18n="ood_strong">Görüntü Tanınamadı:</strong>
+                <span data-i18n="ood_msg"> Yüklenen görüntü desteklenen 9 deri lezyonu sınıfından hiçbirine yeterli güvenle eşleşmedi. Yapay zeka tahmini yapılamadı.</span>
+              </div>
+            </div>
+
+            <div class="alert mal-alert hidden" id="mal-alert">
+              <div class="alert-icon">🚨</div>
+              <div class="alert-text">
+                <strong data-i18n="mal_strong">Malignite (Kanser) Uyarısı:</strong>
+                <span data-i18n="mal_msg"> Model, kötü huylu bir lezyon olma olasılığını yüksek buluyor. Lütfen bir dermatoloji uzmanına başvurun ve biyopsi değerlendirmesi yaptırın.</span>
+              </div>
+            </div>
+
+            <div id="results-bento-wrapper" class="results-bento">
+
+              <!-- Bento 1: Birincil Tanı -->
+              <div class="bento-card main-diag">
+                <div class="card-head" data-i18n="card_primary">Birincil YZ Tahmini</div>
+                <div class="diag-body">
+                  <div class="diag-left">
+                    <h1 id="res-top-class">—</h1>
+                    <div class="conf-pill"><span id="res-conf">0</span>% <span data-i18n="conf_text">Güven Skoru</span></div>
+                    <div id="risk-badge" class="risk-badge hidden"></div>
+                  </div>
+                  <div class="diag-chart">
+                    <canvas id="confidence-chart" width="100" height="100"></canvas>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Bento 2: Görüntü -->
+              <div class="bento-card img-ref">
+                <div class="card-head space-between">
+                  <span data-i18n="card_image">Analiz Edilen Görüntü</span>
+                  <div class="action-icons">
+                    <button class="icon-btn" id="abcde-btn" onclick="toggleABCDE()" data-i18n-title="abcde_btn_title" title="ABCDE Dermoskopi Kılavuzu">🔍</button>
+                    <button class="icon-btn" onclick="openImageZoom()" title="Tam Ekran">⛶</button>
+                  </div>
+                </div>
+                <div class="img-zoom-container">
+                  <img id="res-img" src="" alt="Referans" onclick="openImageZoom()">
+                </div>
+                <!-- ABCDE Panel -->
+                <div id="abcde-panel" class="abcde-panel hidden">
+                  <div class="abcde-title" data-i18n="abcde_guide_title">ABCDE Dermoskopi Kılavuzu</div>
+                  <div class="abcde-item"><span class="abcde-letter">A</span><div><strong data-i18n="abcde_a_title">Asimetri</strong><p data-i18n="abcde_a_desc">Lezyonun iki yarısı birbirine benzemiyor</p></div></div>
+                  <div class="abcde-item"><span class="abcde-letter">B</span><div><strong data-i18n="abcde_b_title">Sınır</strong><p data-i18n="abcde_b_desc">Kenarlar düzensiz, pürüzlü veya çentikli</p></div></div>
+                  <div class="abcde-item"><span class="abcde-letter">C</span><div><strong data-i18n="abcde_c_title">Renk</strong><p data-i18n="abcde_c_desc">Birden fazla renk tonu veya düzensiz dağılım</p></div></div>
+                  <div class="abcde-item"><span class="abcde-letter">D</span><div><strong data-i18n="abcde_d_title">Çap</strong><p data-i18n="abcde_d_desc">6mm'den büyük (kurşun kalem silgisi büyüklüğü)</p></div></div>
+                  <div class="abcde-item"><span class="abcde-letter">E</span><div><strong data-i18n="abcde_e_title">Evrim</strong><p data-i18n="abcde_e_desc">Boyut, şekil veya renkte zaman içinde değişim</p></div></div>
+                </div>
+              </div>
+
+              <!-- Bento 3: Tanı Raporu -->
+              <div class="bento-card full-report">
+                <div class="card-head space-between">
+                  <div class="report-head-left">
+                    <span data-i18n="card_report">Tanı Raporu (Gemini 2.5)</span>
+                    <span id="report-timestamp" class="report-ts"></span>
+                  </div>
+                  <div class="action-icons">
+                    <button class="icon-btn font-ctrl" onclick="adjustReportFont(-5)" title="Küçült">A-</button>
+                    <button class="icon-btn font-ctrl" onclick="adjustReportFont(5)" title="Büyüt">A+</button>
+                    <button class="icon-btn" onclick="copyReport()" title="Panoya Kopyala">📋</button>
+                    <button class="icon-btn" onclick="downloadPDF()" title="PDF İndir">📄</button>
+                    <button class="icon-btn" onclick="window.print()" title="Yazdır">🖨️</button>
+                  </div>
+                </div>
+                <div class="report-scroll" id="res-report"></div>
+              </div>
+
+              <!-- Bento 4: Olasılıklar -->
+              <div class="bento-card probs-card">
+                <div class="card-head" data-i18n="card_probs">Ayırıcı Olasılıklar</div>
+                <div class="probs-list" id="res-probs"></div>
+              </div>
+
+              <!-- Bento 5: Literatür -->
+              <div class="bento-card lit-card">
+                <div class="card-head" data-i18n="card_lit">Destekleyici Literatür (RAG)</div>
+                <div class="lit-scroll" id="res-lit"></div>
+              </div>
+
+            </div><!-- #results-bento-wrapper -->
+
+            <!-- Benzer Vakalar -->
+            <div id="similar-cases" class="similar-cases-section hidden">
+              <h3 class="sim-heading" data-i18n="sim_title">Benzer Geçmiş Vakalar</h3>
+              <div id="similar-list" class="similar-list"></div>
+            </div>
+
+            <div class="step-actions center mt-xl">
+              <button class="btn-secondary" onclick="resetSystem()">
+                <span data-i18n="btn_restart">← Yeni Analiz</span>
+              </button>
+            </div>
+
+          </div><!-- #results-view -->
+        </section>
+
+      </div><!-- .wizard-container -->
+    </div><!-- #view-analysis -->
+
+    <!-- ====== GEÇMİŞ GÖRÜNÜMÜ ====== -->
+    <div id="view-history" class="panel-view hidden">
+      <div class="panel-header">
+        <h2 data-i18n="hist_title">Hasta Geçmişi</h2>
+        <p data-i18n="hist_sub">Geçmiş analizler tarayıcınızda yerel olarak saklanmaktadır.</p>
+      </div>
+      <div id="history-list" class="history-list"></div>
+    </div>
+
+    <!-- ====== AYARLAR GÖRÜNÜMÜ ====== -->
+    <div id="view-settings" class="panel-view hidden">
+      <div class="panel-header">
+        <h2 data-i18n="set_title">Ayarlar</h2>
+        <p data-i18n="set_sub">Uygulama tercihlerinizi buradan yönetin.</p>
+      </div>
+      <div class="settings-grid">
+
+        <div class="setting-card">
+          <div class="setting-label" data-i18n="set_lang_label">Arayüz Dili</div>
+          <div class="lang-selector">
+            <button class="lang-btn" data-lang="en" onclick="setLanguage('en')">EN</button>
+            <button class="lang-btn active" data-lang="tr" onclick="setLanguage('tr')">TR</button>
+          </div>
+        </div>
+
+        <div class="setting-card">
+          <div class="setting-label" data-i18n="set_theme_label">Tema</div>
+          <div class="theme-row">
+            <button class="theme-opt" id="theme-dark-btn" onclick="setTheme('dark')">🌙 <span data-i18n="theme_dark">Koyu</span></button>
+            <button class="theme-opt active" id="theme-light-btn" onclick="setTheme('light')">☀️ <span data-i18n="theme_light">Açık</span></button>
+          </div>
+        </div>
+
+        <div class="setting-card">
+          <div class="setting-label" data-i18n="set_hist_label">Analiz Geçmişi</div>
+          <div class="setting-row">
+            <span id="hist-count-display" class="text-muted">0 kayıtlı analiz</span>
+            <button class="btn-small btn-danger" onclick="clearHistory()" data-i18n="set_clear_btn">Tümünü Temizle</button>
+          </div>
+        </div>
+
+        <div class="setting-card">
+          <div class="setting-label" data-i18n="set_tour_label">Kullanım Öğreticisi</div>
+          <button class="btn-small" onclick="startOnboarding(true)" data-i18n="set_tour_btn">Öğreticiyi Yeniden Başlat</button>
+        </div>
+
+        <div class="setting-card full-width">
+          <div class="setting-label" data-i18n="set_about_label">DermatoRAG Hakkında</div>
+          <div class="about-box">
+            <p data-i18n="set_about_text">DermatoRAG v1.0 — YZ Destekli Dermatolojik Tanı Destek Sistemi</p>
+            <p class="text-muted" data-i18n="set_model_text">Vision: BiomedCLIP fine-tuned + TTA | Top-1: %73 · İlk 3'te: ~%87 | LLM: Gemini 2.5 Flash | RAG: 706 PubMed makalesi</p>
+            <div class="about-disclaimer" data-i18n="set_about_note">⚠️ Bu sistem yalnızca tanı desteği amacıyla kullanılmalıdır. Yapay zeka çıktısı, yetkili bir dermatoloji uzmanının klinik muayenesinin yerini tutamaz.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div><!-- #app-view -->
+
+<script src="/static/app.js"></script>
+</body>
+</html>
