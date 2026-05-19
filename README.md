@@ -12,6 +12,9 @@
 [![Top-1](https://img.shields.io/badge/Top--1-77.8%25-blueviolet.svg)]()
 [![Top-3](https://img.shields.io/badge/Top--3-95.2%25-brightgreen.svg)]()
 
+**Bu proje [Talha Dağ](https://github.com/TalhaD-coder) ve [Dijle Doğan](https://github.com/dijledogan) tarafından geliştirilmiştir.**
+**© 2026 Talha Dağ & Dijle Doğan — Tüm hakları saklıdır.**
+
 ![Açılış sayfası](docs/images/01_landing.png)
 
 </div>
@@ -642,9 +645,28 @@ Detay: [`dermato_rag_roadmap.md`](dermato_rag_roadmap.md)
 
 ---
 
+## 👥 Yazarlar
+
+Bu proje **Talha Dağ** ve **Dijle Doğan** tarafından geliştirilmiştir.
+
+| Yazar | GitHub |
+|-------|--------|
+| **Talha Dağ** | [@TalhaD-coder](https://github.com/TalhaD-coder) |
+| **Dijle Doğan** | [@dijledogan](https://github.com/dijledogan) |
+
+> **© 2026 Talha Dağ & Dijle Doğan.** Bu proje üzerindeki tüm fikri mülkiyet ve telif
+> hakları tamamen yazarlara aittir. İzinsiz kopyalanması, ticari amaçla kullanılması
+> veya yeniden dağıtılması yasaktır.
+
+---
+
 ## 📝 Lisans
 
 Bu proje [MIT Lisansı](LICENSE) ile lisanslanmıştır.
+Telif hakkı **© 2026 Talha Dağ & Dijle Doğan**'a aittir; tüm hakları saklıdır.
+
+Kod, açık kaynak topluluğuna katkı amacıyla yayınlanmıştır; ancak ticari kullanım,
+yeniden dağıtım ve türev çalışmalar için yazarlardan **yazılı izin alınması** gereklidir.
 
 ---
 
@@ -661,6 +683,8 @@ Pull request'ler memnuniyetle karşılanır — yeni eklemeler için önce bir i
 
 **⚠️ Bu sistem yalnızca tanı destek aracıdır. Klinik tanı için her zaman lisanslı bir dermatoloji uzmanına başvurun.**
 
-Made with ❤️ for evidence-based dermatology AI research.
+Made with ❤️ by **Talha Dağ** & **Dijle Doğan** for evidence-based dermatology AI research.
+
+**© 2026 — All rights reserved.**
 
 </div>
