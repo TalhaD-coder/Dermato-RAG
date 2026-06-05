@@ -54,6 +54,14 @@
 
 ## 🏗️ Sistem Akışı
 
+<p align="center">
+  <img src="outputs/figures/system_architecture.png" alt="Dermato-RAG sistem mimarisi" width="850">
+  <br>
+  <em>Şekil 1 — Dermato-RAG sisteminin uçtan-uca mimari yapısı ve veri akışı.</em>
+</p>
+
+### Tekstüel akış diyagramı
+
 ```
                     ┌────────────────────────┐
                     │  Görüntü + Klinik Bilgi│
@@ -62,7 +70,8 @@
         ┌─────────────────────────────────────────────┐
         │  [1] VISION ENCODER  (BiomedCLIP + TTA-6)   │
         │  → top-3 sınıf + güven skoru                │
-        │  → OOD tespiti (confidence < 0.45)          │
+        │  → OOD: BiomedCLIP zero-shot + entropy      │
+        │    (kedi, manzara vb. otomatik reddedilir)  │
         └────────────────────┬────────────────────────┘
                              ▼
         ┌─────────────────────────────────────────────┐
@@ -543,10 +552,16 @@ hastalığı gibi durumlar **OOD (out-of-distribution)** olarak işaretlenir ve 
 <details>
 <summary><b>🔍 OOD (Out-of-Distribution) tespiti nasıl çalışır?</b></summary>
 
-Vision modelinin top-1 güveni **%45'in altındaysa** OOD olarak işaretlenir. Bu durumda:
-- Tahmin üretilmez
+Sistem **iki katmanlı OOD koruması** kullanır:
+
+1. **BiomedCLIP zero-shot kontrolü (ana koruma):** Görüntü, dermatoloji vs. alakasız (hayvan, manzara, bitki, nesne, yiyecek) prompt'larla karşılaştırılır. Cilt/dermatoloji kategorisine düşmüyorsa OOD.
+2. **Güven + entropy fallback:** CLIP başarısız olursa, max softmax güveni < 0.30 veya normalize entropy > 0.92 ise OOD.
+
+OOD tespit edildiğinde:
+- Tahmin üretilmez (`Tanı Verilemedi` gösterilir)
 - Özel uyarı ekranı gösterilir
 - Olası nedenler ve dermatologa başvurma önerisi sunulur
+- Olasılık dağılımı kartı gizlenir (yanıltıcı olmaması için)
 </details>
 
 <details>
