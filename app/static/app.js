@@ -91,7 +91,7 @@ const DICT = {
     set_clear_btn:"Clear All", set_tour_label:"Tutorial", set_tour_btn:"Restart Tutorial",
     set_about_label:"About DermatoRAG",
     set_about_text:"DermatoRAG v1.0 — AI-Powered Dermatological Diagnostic Support System",
-    set_model_text:"Vision: BiomedCLIP fine-tuned + TTA | Top-1: 73% · Top-3: ~87% | LLM: Gemini 2.5 Flash | RAG: 706 PubMed articles",
+    set_model_text:"Vision: BiomedCLIP fine-tuned + TTA | Top-1: 77.8% · Top-3: 95.2% | LLM: Gemini 2.5 Flash | RAG: 8,194 PubMed chunks",
     set_about_note:"⚠️ This system is intended as a diagnostic support tool only. AI output does not replace clinical evaluation by a licensed dermatologist.",
 
     tour_skip:"Skip", tour_next:"Next →", tour_finish:"Get Started!",
@@ -193,7 +193,7 @@ const DICT = {
     set_clear_btn:"Tümünü Temizle", set_tour_label:"Kullanım Öğreticisi", set_tour_btn:"Öğreticiyi Yeniden Başlat",
     set_about_label:"DermatoRAG Hakkında",
     set_about_text:"DermatoRAG v1.0 — YZ Destekli Dermatolojik Tanı Destek Sistemi",
-    set_model_text:"Vision: BiomedCLIP fine-tuned + TTA | Top-1: %73 · İlk 3'te: ~%87 | LLM: Gemini 2.5 Flash | RAG: 706 PubMed makalesi",
+    set_model_text:"Vision: BiomedCLIP fine-tuned + TTA | Top-1: %77.8 · İlk 3'te: %95.2 | LLM: Gemini 2.5 Flash | RAG: 8.194 PubMed chunk",
     set_about_note:"⚠️ Bu sistem yalnızca tanı desteği amacıyla kullanılmalıdır. Yapay zeka çıktısı, yetkili bir dermatoloji uzmanının klinik muayenesinin yerini tutamaz.",
 
     tour_skip:"Geç", tour_next:"İleri →", tour_finish:"Başla!",
@@ -895,8 +895,15 @@ function renderResults(data, imageUrl) {
   }
 
   const cName = CLASS_DISPLAY[currentLang]?.[vis.top_class] || vis.top_class_display || vis.top_class;
-  document.getElementById('res-top-class').innerText = cName;
-  document.getElementById('res-conf').innerText = vis.confidence;
+  // OOD durumunda tanı adını ve güven yüzdesini göstermeyelim — yanıltıcı olur
+  if (vis.is_ood) {
+    document.getElementById('res-top-class').innerText =
+      currentLang === 'tr' ? 'Tanı Verilemedi' : 'Diagnosis Unavailable';
+    document.getElementById('res-conf').innerText = '—';
+  } else {
+    document.getElementById('res-top-class').innerText = cName;
+    document.getElementById('res-conf').innerText = vis.confidence;
+  }
 
   // Risk badge
   const rb = document.getElementById('risk-badge');
@@ -922,7 +929,12 @@ function renderResults(data, imageUrl) {
   if (ts) ts.textContent = new Date().toLocaleString(currentLang==='tr'?'tr-TR':'en-US', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
 
   renderDonut(vis.confidence, vis.is_malignant, vis.is_ood);
-  renderProbs(vis.all_probs);
+  // OOD durumunda 'Ayırıcı Olasılıklar' kartını gizle — yanıltıcı olur
+  const probsCard = document.getElementById('probs-card');
+  if (probsCard) {
+    probsCard.style.display = vis.is_ood ? 'none' : '';
+  }
+  if (!vis.is_ood) renderProbs(vis.all_probs);
   if (!vis.is_ood) renderReport(data.diagnosis || '');
   renderLit(data.articles || []);
   renderSimilarCases(vis.top_class);
@@ -1350,14 +1362,20 @@ function renderHistory() {
   }
   container.innerHTML = analysisHistory.map((entry,idx) => {
     const dateStr = new Date(entry.timestamp).toLocaleDateString(currentLang==='tr'?'tr-TR':'en-US',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    const topClass= CLASS_DISPLAY[currentLang]?.[entry.vision?.top_class]||entry.vision?.top_class_display||entry.vision?.top_class||'—';
+    const isOod   = !!entry.vision?.is_ood;
+    const topClass= isOod
+      ? (currentLang==='tr' ? 'Tanı Verilemedi' : 'Diagnosis Unavailable')
+      : (CLASS_DISPLAY[currentLang]?.[entry.vision?.top_class]||entry.vision?.top_class_display||entry.vision?.top_class||'—');
     const conf    = entry.vision?.confidence||0;
-    const isMal   = entry.vision?.is_malignant;
-    const confCol = isMal?'var(--color-err)':'var(--color-success)';
+    const isMal   = !isOod && entry.vision?.is_malignant;
+    const confCol = isOod ? 'var(--text-muted)' : (isMal?'var(--color-err)':'var(--color-success)');
     const thumb   = entry.imageDataUrl
       ? `<img src="${entry.imageDataUrl}" class="hist-thumb" alt="lezyon">`
       : `<div class="hist-thumb-placeholder" style="background:${isMal?'rgba(239,68,68,0.15)':'rgba(16,185,129,0.15)'}">🔬</div>`;
     const malBadge= isMal?`<span class="hist-mal-badge">⚠ Malign</span>`:'';
+    const confLabel = isOod
+      ? (currentLang==='tr' ? 'Tanınamadı' : 'Unrecognized')
+      : `%${conf} ${t('conf_text')}`;
     return `<div class="hist-item">
       <div class="hist-timeline-dot" style="background:${confCol}"></div>
       ${thumb}
@@ -1367,7 +1385,7 @@ function renderHistory() {
           ${malBadge}
         </div>
         <div class="hist-meta">
-          <span class="hist-conf" style="color:${confCol}">%${conf} ${t('conf_text')}</span>
+          <span class="hist-conf" style="color:${confCol}">${confLabel}</span>
           <span class="hist-date">· ${dateStr}</span>
         </div>
         <div class="hist-filename">📎 ${entry.imageName}</div>

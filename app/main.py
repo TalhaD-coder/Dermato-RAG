@@ -166,15 +166,25 @@ async def analyze(
             "vascular_lesion": "Vasküler Lezyon",
         }
         is_malignant = vision["top_class"] in MALIGNANT
+        is_ood_flag = bool(vision.get("is_ood", False))
+
+        # OOD durumunda yanıltıcı tanı adını ve güven değerini gizle
+        if is_ood_flag:
+            top_display = "Tanı Verilemedi" if language == "tr" else "Diagnosis Unavailable"
+            confidence_to_send = 0.0
+            is_malignant = False  # OOD ise malign de gösterme
+        else:
+            top_display = vision["top_class_display"]
+            confidence_to_send = round(vision["confidence"] * 100, 1)
 
         return JSONResponse({
             "success": True,
             "vision": {
                 "top_class": vision["top_class"],
-                "top_class_display": vision["top_class_display"],
-                "confidence": round(vision["confidence"] * 100, 1),
+                "top_class_display": top_display,
+                "confidence": confidence_to_send,
                 "is_malignant": is_malignant,
-                "is_ood": bool(vision.get("is_ood", False)),
+                "is_ood": is_ood_flag,
                 "top3": [
                     {
                         "class": cls,

@@ -18,6 +18,7 @@ Kullanım:
     print(result["diagnosis"])
 """
 
+import math
 import os
 from pathlib import Path
 from typing import Dict, Optional
@@ -134,7 +135,91 @@ class DermatoRAGPipeline:
         # 3. LLM'i başlat
         self._load_llm(llm_provider, llm_model)
 
+        # 4. CLIP zero-shot OOD dedektörü (cilt mi / değil mi)
+        self._load_ood_detector()
+
         logger.info("Pipeline hazir")
+
+    def _load_ood_detector(self) -> None:
+        """
+        BiomedCLIP zero-shot ile cilt/dermatoloji içerip içermediğini
+        kontrol eden OOD dedektörü. Kedi, ağaç, manzara gibi alakasız
+        görüntüleri reddetmek için kullanılır.
+        """
+        self._ood_clip_model = None
+        self._ood_clip_preprocess = None
+        self._ood_text_features = None
+        try:
+            import open_clip
+
+            logger.info("OOD dedektörü (BiomedCLIP zero-shot) yükleniyor...")
+            model, _, preprocess = open_clip.create_model_and_transforms(
+                "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224"
+            )
+            tokenizer = open_clip.get_tokenizer(
+                "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224"
+            )
+            model = model.to(self.device).eval()
+
+            # Referans prompt'lar — ilk 4 = cilt/dermatoloji, son 5 = alakasız
+            self._ood_text_prompts = [
+                "a dermatoscopic image of a skin lesion",
+                "a clinical close-up photograph of human skin",
+                "a photograph of a mole or skin growth",
+                "a photograph of human skin with a lesion or rash",
+                "a photograph of a cat or other animal",
+                "a photograph of a tree, plant, or flower",
+                "a photograph of an outdoor landscape or scene",
+                "a photograph of a car, building, or man-made object",
+                "a photograph of food or everyday objects",
+            ]
+            self._ood_skin_indices = {0, 1, 2, 3}  # ilk 4 cilt
+
+            text_tokens = tokenizer(self._ood_text_prompts).to(self.device)
+            with torch.no_grad():
+                tf = model.encode_text(text_tokens)
+                tf = tf / tf.norm(dim=-1, keepdim=True)
+                self._ood_text_features = tf
+
+            self._ood_clip_model = model
+            self._ood_clip_preprocess = preprocess
+            logger.info(
+                f"OOD dedektörü hazır ({len(self._ood_text_prompts)} prompt, "
+                f"{len(self._ood_skin_indices)} cilt sınıfı)"
+            )
+        except Exception as e:
+            logger.warning(
+                f"OOD dedektörü yüklenemedi, basit eşik fallback kullanılacak: {e}"
+            )
+            self._ood_clip_model = None
+
+    def _clip_is_dermatologic(self, image: Image.Image) -> tuple:
+        """
+        Görüntünün cilt/dermatoloji içerip içermediğini CLIP zero-shot ile
+        kontrol eder. Geri dönüş: (is_skin, best_prompt, best_score).
+        Hata olursa (True, "", 0.0) döner (güvenli fallback).
+        """
+        if self._ood_clip_model is None or self._ood_text_features is None:
+            return (True, "", 0.0)
+        try:
+            img_tensor = self._ood_clip_preprocess(image).unsqueeze(0).to(self.device)
+            with torch.no_grad():
+                img_feat = self._ood_clip_model.encode_image(img_tensor)
+                img_feat = img_feat / img_feat.norm(dim=-1, keepdim=True)
+                # Cosine similarity → softmax
+                sims = (100.0 * img_feat @ self._ood_text_features.T).softmax(dim=-1)
+                best_idx = int(sims.argmax(dim=-1).item())
+                best_score = float(sims[0, best_idx].item())
+            is_skin = best_idx in self._ood_skin_indices
+            best_prompt = self._ood_text_prompts[best_idx]
+            logger.info(
+                f"CLIP-OOD check: best='{best_prompt}' ({best_score:.3f}) "
+                f"is_skin={is_skin}"
+            )
+            return (is_skin, best_prompt, best_score)
+        except Exception as e:
+            logger.warning(f"CLIP-OOD check hatası: {e} — kabul ediliyor")
+            return (True, "", 0.0)
 
     def _load_vision_model(self, model_path: Optional[str]) -> None:
         """Vision encoder'ı checkpoint'tan yükler."""
@@ -262,13 +347,46 @@ class DermatoRAGPipeline:
         top_class = sorted_probs[0][0]
         top_confidence = sorted_probs[0][1]
 
+        # ============================================================
+        # OOD tespiti — iki katmanlı
+        # ============================================================
+        # 1) CLIP zero-shot: görüntü cilt/dermatoloji içeriyor mu?
+        #    (Kedi, ağaç, manzara, eşya vb. burada yakalanır.)
+        # 2) Confidence/entropy: model çok kararsız mı?
+        # ============================================================
+        is_skin, _ood_best_prompt, _ood_best_score = self._clip_is_dermatologic(image)
+
+        # Confidence/entropy fallback kriteri
+        _entropy_norm = 0.0
+        try:
+            _eps = 1e-10
+            _probs_list = [float(prob_dict[c]) for c in CLASS_LABELS]
+            _entropy = -sum(p * math.log(p + _eps) for p in _probs_list)
+            _max_entropy = math.log(max(len(CLASS_LABELS), 2))
+            _entropy_norm = _entropy / _max_entropy if _max_entropy > 0 else 0.0
+        except Exception as _ood_err:
+            logger.warning(f"OOD entropi hesabi basarisiz: {_ood_err}")
+
+        is_ood = (
+            (not is_skin)                       # CLIP "cilt değil" diyor
+            or (top_confidence < 0.30)          # Çok düşük güven
+            or (_entropy_norm > 0.92)           # Aşırı dağıtık olasılıklar
+        )
+
+        if is_ood:
+            logger.info(
+                f"OOD tespit edildi | is_skin={is_skin} "
+                f"(clip='{_ood_best_prompt}' score={_ood_best_score:.3f}) "
+                f"conf={top_confidence:.3f} entropy_norm={_entropy_norm:.3f}"
+            )
+
         return {
             "top_class": top_class,
             "top_class_display": CLASS_DISPLAY_NAMES.get(top_class, top_class),
             "confidence": top_confidence,
             "top3": sorted_probs[:3],
             "all_probs": prob_dict,
-            "is_ood": top_confidence < 0.45,
+            "is_ood": is_ood,
         }
 
     def _retrieve_articles(self, disease_class: str, query: str = "") -> list:
@@ -513,7 +631,7 @@ class DermatoRAGPipeline:
                 f"İlk 3 tahmin (TTA ortalaması):\n{top3_text}"
             )
             vision_features_text = (
-                f"Model: BiomedCLIP fine-tuned + TTA (Val Acc: %73.48, Test Acc: %73.00)\n"
+                f"Model: BiomedCLIP fine-tuned + TTA (Top-1: %77.78, Top-3: %95.19, Top-5: %98.52)\n"
                 f"Sınıflandırma boyutu: 9 sınıf (ISIC + PAD-UFES veri seti)"
             )
         else:
@@ -523,7 +641,7 @@ class DermatoRAGPipeline:
                 f"Top 3 predictions (TTA averaged):\n{top3_text}"
             )
             vision_features_text = (
-                f"Model: BiomedCLIP fine-tuned + TTA (Val Acc: 73.48%, Test Acc: 73.00%)\n"
+                f"Model: BiomedCLIP fine-tuned + TTA (Top-1: 77.78%, Top-3: 95.19%, Top-5: 98.52%)\n"
                 f"Classification scope: 9 classes (ISIC + PAD-UFES dataset)"
             )
 
